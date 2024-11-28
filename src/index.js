@@ -2,7 +2,6 @@ require('dotenv').config();
 const express = require('express');
 const bodyParser = require('body-parser');
 const axios = require('axios');
-const { google } = require('googleapis');
 const fs = require('fs');
 const path = require('path');
 
@@ -10,13 +9,6 @@ const app = express();
 const PORT = process.env.PORT || 3000;
 
 app.use(bodyParser.json({ limit: '10mb' })); // Suporte para imagens grandes
-
-// Configuração da API Google Drive
-const auth = new google.auth.GoogleAuth({
-  credentials: JSON.parse(process.env.GOOGLE_CREDENTIALS_JSON),
-  scopes: ['https://www.googleapis.com/auth/drive.file'],
-});
-const drive = google.drive({ version: 'v3', auth });
 
 // Rota para receber a imagem e interagir com a OpenAI
 app.post('/identify-bird', async (req, res) => {
@@ -28,14 +20,27 @@ app.post('/identify-bird', async (req, res) => {
 
   try {
     // Passo 1: Enviar para a OpenAI
-    const prompt =
-      'Isto é uma foto de um passáro, identifique qual ave é e me responda apenas a raça da ave. Exemplo, bem-te-vi.';
     const openAiResponse = await axios.post(
-      'https://api.openai.com/v1/completions',
+      'https://api.openai.com/v1/chat/completions',
       {
-        model: 'text-davinci-003',
-        prompt: `Dado o base64 da imagem: ${base64Image}. ${prompt}`,
-        max_tokens: 50,
+        model: 'gpt-4o-mini',
+        messages: [
+          {
+            role: 'user',
+            content: [
+              {
+                type: 'text',
+                text: 'Isto é uma foto de um passáro, identifique qual ave é e me responda apenas a raça da ave. Exemplo, bem-te-vi.',
+              },
+              {
+                type: 'image_url',
+                image_url: {
+                  url: `data:image/jpeg;base64,${base64Image}`,
+                },
+              },
+            ],
+          },
+        ],
       },
       {
         headers: {
@@ -45,34 +50,21 @@ app.post('/identify-bird', async (req, res) => {
       }
     );
 
-    const birdName = openAiResponse.data.choices[0].text.trim();
+    const birdName = openAiResponse.data.choices[0].message.content.trim();
 
-    // Passo 2: Salvar a imagem no Google Drive
+    // Passo 2: Salvar a imagem no diretório temporário
     const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
     const fileName = `${birdName}-${timestamp}.jpg`;
-    const filePath = path.join(__dirname, fileName);
+    const filePath = path.join(__dirname, 'temp', fileName); // Diretório temporário
+
+    // Certifique-se de que o diretório 'temp' existe
+    if (!fs.existsSync(path.join(__dirname, 'temp'))) {
+      fs.mkdirSync(path.join(__dirname, 'temp'));
+    }
 
     // Decodificar a imagem base64 e salvá-la temporariamente
     const imageBuffer = Buffer.from(base64Image, 'base64');
     fs.writeFileSync(filePath, imageBuffer);
-
-    const fileMetadata = {
-      name: fileName,
-      parents: [process.env.GOOGLE_DRIVE_FOLDER_ID],
-    };
-    const media = {
-      mimeType: 'image/jpeg',
-      body: fs.createReadStream(filePath),
-    };
-
-    await drive.files.create({
-      resource: fileMetadata,
-      media: media,
-      fields: 'id',
-    });
-
-    // Remover o arquivo temporário
-    fs.unlinkSync(filePath);
 
     // Resposta ao cliente
     res.json({ message: 'Imagem salva com sucesso!', birdName });
