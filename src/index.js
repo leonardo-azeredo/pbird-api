@@ -4,11 +4,49 @@ const bodyParser = require('body-parser');
 const axios = require('axios');
 const fs = require('fs');
 const path = require('path');
+const { google } = require('googleapis');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
 
 app.use(bodyParser.json({ limit: '10mb' })); // Suporte para imagens grandes
+
+const GOOGLE_API_FOLDER_ID = '1WbeHEXyj0ga5OicDqXogCEwHgcF7R85o';
+
+// Função para fazer upload da imagem para o Google Drive
+async function uploadFileToGoogleDrive(filePath, fileName) {
+  try {
+    const auth = new google.auth.GoogleAuth({
+      keyFile: './googlekey.json',
+      scopes: ['https://www.googleapis.com/auth/drive'],
+    });
+
+    const driveService = google.drive({
+      version: 'v3',
+      auth,
+    });
+
+    const fileMetaData = {
+      name: fileName,
+      parents: [GOOGLE_API_FOLDER_ID],
+    };
+
+    const media = {
+      mimeType: 'image/jpg',
+      body: fs.createReadStream(filePath),
+    };
+
+    const response = await driveService.files.create({
+      resource: fileMetaData,
+      media: media,
+      fields: 'id',
+    });
+
+    return response.data.id;
+  } catch (err) {
+    console.log('Erro ao fazer upload para o Google Drive:', err);
+  }
+}
 
 // Rota para receber a imagem e interagir com a OpenAI
 app.post('/identify-bird', async (req, res) => {
@@ -66,8 +104,15 @@ app.post('/identify-bird', async (req, res) => {
     const imageBuffer = Buffer.from(base64Image, 'base64');
     fs.writeFileSync(filePath, imageBuffer);
 
-    // Resposta ao cliente
-    res.json({ message: 'Imagem salva com sucesso!', birdName });
+    // Passo 3: Fazer o upload para o Google Drive
+    const fileId = await uploadFileToGoogleDrive(filePath, fileName);
+
+    // Resposta ao cliente com o ID do arquivo no Google Drive
+    res.json({
+      message: 'Imagem salva e enviada para o Google Drive com sucesso!',
+      birdName,
+      googleDriveFileId: fileId,
+    });
   } catch (error) {
     console.error('Erro:', error.message);
     res.status(500).json({ error: 'Erro ao processar a imagem.' });
