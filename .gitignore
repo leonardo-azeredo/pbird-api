@@ -1,0 +1,38 @@
+# Ignore arquivos de configuração com credenciais
+.env
+*.env
+
+# Ignore pastas de dependências
+node_modules/
+vendor/
+
+# Ignore arquivos de log
+*.log
+logs/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Ignore arquivos de build e temporários
+dist/
+build/
+temp/
+*.tmp
+*.swp
+
+# Ignore arquivos de sistema
+.DS_Store
+Thumbs.db
+
+# Ignore IDEs e editores
+.vscode/
+.idea/
+*.iml
+
+# Ignore arquivos relacionados ao sistema operacional
+*.bak
+*.orig
+
+# Ignore chaves de API ou arquivos sensíveis
+credentials.json
+googlekey.json
