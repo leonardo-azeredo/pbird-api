@@ -36,3 +36,4 @@ Thumbs.db
 # Ignore chaves de API ou arquivos sensíveis
 credentials.json
 googlekey.json
+package-*.json
