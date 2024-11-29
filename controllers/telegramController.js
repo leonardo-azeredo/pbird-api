@@ -21,7 +21,7 @@ async function identifyBirdTelegram(req, res) {
     const fileId = await saveImageToDrive(filePath, birdName);
 
     // Passo 4: Enviar os detalhes e a imagem ao Telegram
-    const message = `🐦 *Ave Identificada:*\n\n*Nome:* ${birdName}\n*ID no Google Drive:* ${fileId}`;
+    const caption = `🐦 Ave Identificada:\n\nNome: ${birdName}`;
     await sendPhotoToTelegram(filePath, caption);
 
     // Resposta ao cliente
