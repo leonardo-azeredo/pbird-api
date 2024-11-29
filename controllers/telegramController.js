@@ -1,7 +1,7 @@
 const { processBirdImage } = require('../services/openaiService');
 const { saveImageToDrive } = require('../services/googleDriveService');
 const { saveImageLocally } = require('../utils/imageUtils');
-const { sendMessageToTelegram } = require('../services/telegramService');
+const { sendPhotoToTelegram } = require('../services/telegramService');
 
 async function identifyBirdTelegram(req, res) {
   const { base64Image } = req.body;
@@ -20,9 +20,9 @@ async function identifyBirdTelegram(req, res) {
     // Passo 3: Fazer upload da imagem para o Google Drive
     const fileId = await saveImageToDrive(filePath, birdName);
 
-    // Passo 4: Enviar os detalhes ao Telegram
-    const message = `🐦 *Bird Identified:*\n\nName: ${birdName}\nGoogle Drive File ID: ${fileId}`;
-    await sendMessageToTelegram(message);
+    // Passo 4: Enviar os detalhes e a imagem ao Telegram
+    const caption = `🐦 *Ave Identificada:*\n\n*Nome:* ${birdName}\n*ID no Google Drive:* ${fileId}`;
+    await sendPhotoToTelegram(filePath, caption);
 
     // Resposta ao cliente
     res.json({
